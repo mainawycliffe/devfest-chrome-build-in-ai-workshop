@@ -1,0 +1,713 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Chrome AI APIs (On Device AI with Chrome) Codelab</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/claat-public/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14" ga4id=""></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  codelab-ga4id=""
+                  id="chrome-ai-angular-workshop"
+                  title="Chrome AI APIs (On Device AI with Chrome) Codelab"
+                  environment="web"
+                  feedback-link="https://github.com/mainawycliffe/devfest-chrome-build-in-ai-workshop">
+    
+      <google-codelab-step label="Overview" duration="2">
+        <h2 is-upgraded>What You&#39;ll Build</h2>
+<p>By the end of this codelab, you&#39;ll have created a fully functional Chrome AI service that can:</p>
+<ul>
+<li>Check AI availability in the browser</li>
+<li>Initialize AI sessions with custom system prompts</li>
+<li>Stream AI responses in real-time</li>
+<li>Process images for OCR (Optical Character Recognition)</li>
+<li>Improve text with grammar checking, polishing, and more</li>
+</ul>
+<h2 class="checklist" is-upgraded>What You&#39;ll Learn</h2>
+<ul class="checklist">
+<li>Understanding Chrome&#39;s built-in AI API</li>
+<li>Working with Angular signals for reactive state management</li>
+<li>Implementing streaming responses with AsyncGenerators</li>
+<li>Handling AI model downloads and progress tracking</li>
+<li>Building type-safe AI integrations</li>
+</ul>
+<h2 is-upgraded>What You&#39;ll Need</h2>
+<ul>
+<li><strong>Chrome Canary</strong> or <strong>Chrome Dev</strong> version 128 or higher</li>
+<li><strong>Node.js</strong> 18+ and npm</li>
+<li><strong>Git</strong> for cloning the repository</li>
+<li>A code editor (VS Code recommended)</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Browser Setup" duration="5">
+        <p>Negative : This step is <strong>critical</strong>! The workshop won&#39;t work without proper browser configuration.</p>
+<h2 is-upgraded>Download Chrome Canary</h2>
+<ol type="1">
+<li>Visit: https://www.google.com/chrome/canary/</li>
+<li>Install for your operating system</li>
+</ol>
+<h2 is-upgraded>Enable Required Flags</h2>
+<ol type="1">
+<li>Open Chrome Canary</li>
+<li>Navigate to <code>chrome://flags</code></li>
+<li>Enable these flags: <ul>
+<li><code>#prompt-api-for-gemini-nano</code></li>
+<li><code>#optimization-guide-on-device-model</code></li>
+</ul>
+</li>
+<li>Click <strong>Relaunch</strong> button</li>
+</ol>
+<h2 is-upgraded>Verify Setup</h2>
+<ol type="1">
+<li>Open DevTools Console (F12)</li>
+<li>Type: <code>typeof LanguageModel</code></li>
+<li>Should return: <code>"object"</code> (not <code>"undefined"</code>)</li>
+</ol>
+<p>Positive : If you see <code>"object"</code>, you&#39;re ready to go! If not, double-check the flags and restart Chrome.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Project Setup" duration="10">
+        <p>You can choose between using Firebase Studio&#39;s online editor or developing locally.</p>
+<h2 is-upgraded>Option A: Firebase Studio (Recommended)</h2>
+<h3 is-upgraded>Fork the Repository</h3>
+<ol type="1">
+<li>Visit: https://github.com/mainawycliffe/devfest-chrome-build-in-ai-workshop</li>
+<li>Click <strong>Fork</strong> button in the top right</li>
+<li>Select your GitHub account</li>
+</ol>
+<h3 is-upgraded>Open in Firebase Studio</h3>
+<ol type="1">
+<li>Go to: https://firebase.google.com/products/hosting/studio</li>
+<li>Click <strong>Connect repository</strong></li>
+<li>Select your forked repository</li>
+<li>Choose the <code>starter</code> branch</li>
+</ol>
+<h3 is-upgraded>Install Dependencies</h3>
+<pre><code language="language-bash" class="language-bash">npm install
+</code></pre>
+<h3 is-upgraded>Start Development Server</h3>
+<pre><code language="language-bash" class="language-bash">npm start
+</code></pre>
+<h2 is-upgraded>Option B: Local Development</h2>
+<h3 is-upgraded>Clone the Repository</h3>
+<pre><code language="language-bash" class="language-bash">git clone -b starter https://github.com/mainawycliffe/devfest-chrome-build-in-ai-workshop.git
+cd devfest-chrome-build-in-ai-workshop
+</code></pre>
+<h3 is-upgraded>Install Dependencies</h3>
+<pre><code language="language-bash" class="language-bash">npm install
+</code></pre>
+<h3 is-upgraded>Start Development Server</h3>
+<pre><code language="language-bash" class="language-bash">npm start
+</code></pre>
+<h3 is-upgraded>Open in Browser</h3>
+<p>Navigate to: http://localhost:4200 (use Chrome Canary with flags enabled)</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Understanding the Project" duration="3">
+        <p>Before we start coding, let&#39;s explore the key files:</p>
+<pre><code>screenshot-analyzer/
+├── src/
+│   ├── app/
+│   │   ├── services/
+│   │   │   └── chrome-ai.service.ts      # ⚠️ We&#39;ll implement this
+│   │   ├── types/
+│   │   │   └── chrome-ai.types.ts        # TypeScript definitions
+│   │   ├── components/
+│   │   │   ├── text-improver/            # Text improvement UI
+│   │   │   └── screenshot-upload/        # Image upload UI
+│   │   └── pages/
+│   │       └── screenshot-analyzer/      # Main page
+│   └── solutions/
+│       └── chrome-ai.service.ts          # ✅ Reference solution
+</code></pre>
+<p>Positive : The <code>solutions/</code> folder contains a complete reference implementation you can refer to if you get stuck.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Create TypeScript Types" duration="8">
+        <p>First, we need to define types for Chrome&#39;s AI API.</p>
+<h2 is-upgraded>Open the Types File</h2>
+<p>Open <code>src/app/types/chrome-ai.types.ts</code> and add the following:</p>
+<h2 is-upgraded>AI Availability Type</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Represents the different states of the Chrome AI model availability.
+ */
+export type AIAvailability = 
+  | &#39;readily&#39;        // Model is ready to use immediately
+  | &#39;available&#39;      // Model is available but needs initialization
+  | &#39;after-download&#39; // Model needs to be downloaded before use
+  | &#39;downloadable&#39;   // Model can be downloaded from Chrome components
+  | &#39;downloading&#39;    // Model is currently being downloaded
+  | &#39;no&#39;;            // Model is not available
+</code></pre>
+<h2 is-upgraded>Monitor Interface</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Interface for monitoring AI model download progress.
+ */
+export interface AILanguageModelMonitor {
+  addEventListener(
+    type: &#39;downloadprogress&#39;,
+    callback: (e: { loaded: number; total: number }) =&gt; void
+  ): void;
+}
+</code></pre>
+<h2 is-upgraded>Configuration Options</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Configuration options for creating an AI language model session.
+ */
+export interface AILanguageModelCreateOptions {
+  systemPrompt?: string;  // Defines the AI&#39;s behavior
+  signal?: AbortSignal;   // Allows cancellation
+  monitor?: (monitor: AILanguageModelMonitor) =&gt; void;  // Download progress
+}
+</code></pre>
+<h2 is-upgraded>Language Model Interface</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Interface representing an active AI language model session.
+ */
+export interface AILanguageModel {
+  prompt(input: string): Promise&lt;string&gt;;
+  promptStreaming(input: string): ReadableStream;
+  destroy(): void;
+  maxTokens: number;
+  tokensSoFar: number;
+  tokensLeft: number;
+}
+</code></pre>
+<h2 is-upgraded>Global Declaration</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Global Chrome AI API declaration.
+ */
+declare global {
+  interface LanguageModelConstructor {
+    create(options?: AILanguageModelCreateOptions): Promise&lt;AILanguageModel&gt;;
+    availability(): Promise&lt;AIAvailability&gt;;
+  }
+
+  const LanguageModel: LanguageModelConstructor;
+}
+
+export {};
+</code></pre>
+<p>Positive : These types provide full IntelliSense support and type safety for Chrome&#39;s AI API!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Service: Imports and Properties" duration="5">
+        <p>Now let&#39;s build the Chrome AI service.</p>
+<h2 is-upgraded>Import Dependencies</h2>
+<p>Open <code>src/app/services/chrome-ai.service.ts</code> and add imports:</p>
+<pre><code language="language-typescript" class="language-typescript">import { Injectable, signal } from &#39;@angular/core&#39;;
+import { AILanguageModel, AIAvailability } from &#39;../types/chrome-ai.types&#39;;
+</code></pre>
+<h2 is-upgraded>Add Service Properties</h2>
+<p>Replace the placeholder signals:</p>
+<pre><code language="language-typescript" class="language-typescript">@Injectable({
+  providedIn: &#39;root&#39;
+})
+export class ChromeAiService {
+  /**
+   * Stores the active AI session
+   */
+  private session = signal&lt;AILanguageModel | null&gt;(null);
+  
+  /**
+   * Simple boolean flag for AI availability
+   */
+  readonly isAvailable = signal&lt;boolean&gt;(false);
+  
+  /**
+   * Detailed availability status
+   */
+  readonly availability = signal&lt;AIAvailability&gt;(&#39;no&#39;);
+  
+  /**
+   * Download progress as percentage (0-100)
+   */
+  readonly downloadProgress = signal&lt;number&gt;(0);
+  
+  /**
+   * Flag indicating if model is downloading
+   */
+  readonly isDownloading = signal&lt;boolean&gt;(false);
+}
+</code></pre>
+<p>Negative : Signals are Angular&#39;s reactive state management solution. They automatically update the UI when values change!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Service: Check Availability" duration="10">
+        <p>Implement the method that checks if Chrome AI is available.</p>
+<h2 is-upgraded>Add checkAvailability Method</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Checks if Chrome&#39;s built-in AI is available in the current browser.
+ */
+async checkAvailability(): Promise&lt;boolean&gt; {
+  // Check if the LanguageModel API exists
+  if (typeof LanguageModel === &#39;undefined&#39;) {
+    console.warn(&#39;❌ Chrome AI not available. Make sure you have:&#39;);
+    console.warn(&#39;1. Chrome Canary/Dev 128+&#39;);
+    console.warn(&#39;2. Enabled chrome://flags/#prompt-api-for-gemini-nano&#39;);
+    console.warn(&#39;3. Enabled chrome://flags/#optimization-guide-on-device-model&#39;);
+    console.warn(&#39;4. Restarted Chrome&#39;);
+    
+    this.isAvailable.set(false);
+    this.availability.set(&#39;no&#39;);
+    return false;
+  }
+
+  try {
+    // Call the Chrome API to check status
+    const status = await LanguageModel.availability();
+    console.log(&#39;✅ Availability:&#39;, status);
+    
+    // Update reactive signals
+    this.availability.set(status);
+    this.isAvailable.set(status !== &#39;no&#39;);
+    
+    return status !== &#39;no&#39;;
+  } catch (error) {
+    console.error(&#39;❌ Failed to check AI availability:&#39;, error);
+    this.isAvailable.set(false);
+    this.availability.set(&#39;no&#39;);
+    return false;
+  }
+}
+</code></pre>
+<h2 is-upgraded>What&#39;s Happening?</h2>
+<ol type="1">
+<li>Check if <code>LanguageModel</code> exists in the global scope</li>
+<li>Call <code>LanguageModel.availability()</code> to check model status</li>
+<li>Update reactive signals with the results</li>
+<li>Return boolean for convenience</li>
+</ol>
+<p>Positive : The helpful console warnings guide developers if something isn&#39;t configured correctly!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Service: Initialize Session" duration="15">
+        <p>This creates an AI session with a custom system prompt.</p>
+<h2 is-upgraded>Add initializeSession Method</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Initializes a new AI session with a custom system prompt.
+ * 
+ * IMPORTANT: On first run, this will download ~1.5GB model (Gemini Nano).
+ */
+async initializeSession(): Promise&lt;void&gt; {
+  // Guard clause - ensure AI is available
+  if (!this.isAvailable()) {
+    throw new Error(&#39;Chrome AI is not available&#39;);
+  }
+
+  try {
+    // Set download flags for loading UI
+    this.isDownloading.set(true);
+    this.downloadProgress.set(0);
+
+    // Create the AI session
+    const aiSession = await LanguageModel.create({
+      /**
+       * System Prompt: Defines the AI&#39;s behavior
+       */
+      systemPrompt: `You are a professional OCR (Optical Character Recognition) system powered by AI. Your primary function is to accurately extract and transcribe ALL visible text from images.
+      
+      CORE RESPONSIBILITIES:
+      - Extract ALL text content from images with maximum accuracy
+      - Preserve original formatting, line breaks, and text structure
+      - Maintain proper spacing and paragraph organization
+      - Handle multiple languages and special characters
+      - Recognize text in various fonts, sizes, and styles
+      
+      EXTRACTION RULES:
+      1. Output ONLY the extracted text - no descriptions, analysis, or commentary
+      2. Preserve the reading order (top-to-bottom, left-to-right)
+      3. Maintain original capitalization and punctuation
+      4. Use proper line breaks to reflect the image layout
+      5. For tables, preserve row/column structure using spacing
+      6. For unclear text, use [unclear: approximate_text] notation
+      7. If no text is found, respond: &#34;No text detected in image.&#34;
+      
+      QUALITY STANDARDS:
+      - Accuracy is paramount - transcribe exactly what you see
+      - Be thorough - don&#39;t skip small text or watermarks
+      - Be precise - don&#39;t infer or correct spelling errors
+      - Be structured - maintain logical text flow`,
+      
+      /**
+       * Monitor callback: Tracks download progress
+       */
+      monitor: (m) =&gt; {
+        m.addEventListener(&#39;downloadprogress&#39;, (e) =&gt; {
+          const progress = e.loaded * 100;
+          console.log(`📥 Downloaded ${progress.toFixed(0)}%`);
+          this.downloadProgress.set(progress);
+        });
+      }
+    });
+    
+    // Store the session
+    this.session.set(aiSession);
+    
+    // Update flags
+    this.isDownloading.set(false);
+    this.downloadProgress.set(100);
+    console.log(&#39;✅ Session initialized&#39;);
+  } catch (error) {
+    console.error(&#39;❌ Failed to initialize AI session:&#39;, error);
+    this.isDownloading.set(false);
+    throw error;
+  }
+}
+</code></pre>
+<h2 is-upgraded>Key Points</h2>
+<ul>
+<li><strong>System Prompt</strong>: Defines AI behavior (we&#39;re creating an OCR system)</li>
+<li><strong>Monitor Callback</strong>: Tracks model download progress (~1.5GB)</li>
+<li><strong>First Run</strong>: Model download happens automatically</li>
+<li><strong>Error Handling</strong>: Gracefully handles initialization failures</li>
+</ul>
+<p>Negative : The first initialization will download ~1.5GB. Make sure you have a good internet connection and sufficient disk space!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Service: Streaming Methods" duration="15">
+        <p>Implement methods that stream AI responses for better UX.</p>
+<h2 is-upgraded>Add analyzeScreenshotStreaming Method</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Analyzes a screenshot using AI and streams the response.
+ * This is an AsyncGenerator that yields text chunks as they arrive.
+ */
+async *analyzeScreenshotStreaming(
+  imageData: string, 
+  customPrompt?: string
+): AsyncGenerator&lt;string&gt; {
+  const currentSession = this.session();
+  
+  // Lazy initialization - create session if needed
+  if (!currentSession) {
+    await this.initializeSession();
+  }
+
+  // Use custom prompt or default to OCR
+  const prompt = customPrompt || 
+    &#39;Extract all text from this image. Output only the text, nothing else.&#39;;
+
+  try {
+    const fullPrompt = `${prompt}\n\nImage data: ${imageData}`;
+    const session = this.session()!;
+    
+    // Log token information
+    console.log(&#39;Token info:&#39;, {
+      maxTokens: session.maxTokens,
+      tokensSoFar: session.tokensSoFar,
+      tokensLeft: session.tokensLeft
+    });
+    
+    // Call the AI with streaming enabled
+    const stream = session.promptStreaming(fullPrompt);
+    const reader = stream.getReader();
+    
+    // Read chunks and yield them
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      yield value;
+    }
+  } catch (error: any) {
+    console.error(&#39;Failed to analyze screenshot:&#39;, error);
+    throw error;
+  }
+}
+</code></pre>
+<h2 is-upgraded>Add analyzeText Method</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Analyzes plain text using AI (no image processing).
+ * Used for text improvement features.
+ */
+async *analyzeText(prompt: string): AsyncGenerator&lt;string&gt; {
+  const currentSession = this.session();
+  
+  // Initialize if needed
+  if (!currentSession) {
+    await this.initializeSession();
+  }
+
+  try {
+    const session = this.session()!;
+    const stream = session.promptStreaming(prompt);
+    const reader = stream.getReader();
+    
+    // Read and yield chunks
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      yield value;
+    }
+  } catch (error: any) {
+    console.error(&#39;Failed to analyze text:&#39;, error);
+    throw error;
+  }
+}
+</code></pre>
+<h2 is-upgraded>Understanding AsyncGenerators</h2>
+<ul>
+<li><code>async *</code> creates an async generator function</li>
+<li><code>yield</code> emits values one at a time</li>
+<li>Perfect for streaming responses</li>
+<li>UI updates progressively as text arrives</li>
+</ul>
+<p>Positive : Streaming provides a much better user experience than waiting for the entire response!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Service: Cleanup" duration="3">
+        <p>Add a method to destroy sessions and free resources.</p>
+<h2 is-upgraded>Add destroySession Method</h2>
+<pre><code language="language-typescript" class="language-typescript">/**
+ * Destroys the current AI session and frees up resources.
+ * 
+ * Call this when:
+ * - The session has used too many tokens
+ * - You want to change the system prompt
+ * - The app is being closed
+ */
+destroySession(): void {
+  const currentSession = this.session();
+  
+  if (currentSession) {
+    currentSession.destroy();
+    this.session.set(null);
+  }
+}
+</code></pre>
+<p>Positive : Proper cleanup is important for memory management, especially when dealing with large AI models!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Test Your Implementation" duration="10">
+        <p>Now let&#39;s verify everything works correctly.</p>
+<h2 is-upgraded>Check Service Availability</h2>
+<ol type="1">
+<li>Open the app in Chrome Canary: http://localhost:4200</li>
+<li>Open DevTools Console (F12)</li>
+<li>You should see availability logs</li>
+</ol>
+<h2 is-upgraded>Test Screenshot Analysis</h2>
+<ol type="1">
+<li>Click on the <strong>Screenshot Analyzer</strong> tab</li>
+<li>Click <strong>Upload Screenshot</strong> or drag &amp; drop an image</li>
+<li>Watch the console for download progress (first time only)</li>
+<li>See extracted text appear in real-time</li>
+</ol>
+<h2 is-upgraded>Test Text Improvement</h2>
+<ol type="1">
+<li>Click on the <strong>Text Improver</strong> tab</li>
+<li>Enter some text (e.g., &#34;i love angular its grate&#34;)</li>
+<li>Click <strong>Check Grammar</strong></li>
+<li>Watch AI corrections stream in</li>
+</ol>
+<h2 is-upgraded>Expected Console Output</h2>
+<pre><code>✅ Availability: after-download
+📥 Downloaded 25%
+📥 Downloaded 50%
+📥 Downloaded 75%
+📥 Downloaded 100%
+✅ Session initialized
+Token info: { maxTokens: 4096, tokensSoFar: 150, tokensLeft: 3946 }
+</code></pre>
+<p>Negative : If you see errors, check the Troubleshooting section below.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Troubleshooting" duration="5">
+        <p>Common issues and their solutions.</p>
+<h2 is-upgraded>&#34;LanguageModel is not defined&#34;</h2>
+<p><strong>Solution:</strong></p>
+<ol type="1">
+<li>Verify you&#39;re using Chrome Canary/Dev 128+</li>
+<li>Check flags are enabled at <code>chrome://flags</code></li>
+<li>Restart Chrome completely</li>
+<li>Clear browser cache if needed</li>
+</ol>
+<h2 is-upgraded>Model Won&#39;t Download</h2>
+<p><strong>Solution:</strong></p>
+<ol type="1">
+<li>Check internet connection</li>
+<li>Ensure ~2GB free disk space</li>
+<li>Try <code>chrome://components</code> → Check for &#34;Optimization Guide On Device Model&#34;</li>
+<li>Click &#34;Check for update&#34;</li>
+</ol>
+<h2 is-upgraded>Stream Errors or Token Limits</h2>
+<p><strong>Solution:</strong></p>
+<ol type="1">
+<li>Images too large - reduce image size before upload</li>
+<li>Session reached token limit - call <code>destroySession()</code> and reinitialize</li>
+<li>Check token usage in console logs</li>
+</ol>
+<h2 is-upgraded>No Progress Updates</h2>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Model might already be downloaded</li>
+<li>Check <code>chrome://components</code> for model status</li>
+<li>Try clearing model and re-downloading</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Understanding Key Concepts" duration="5">
+        <p>Let&#39;s review the important concepts.</p>
+<h2 is-upgraded>How Chrome AI Works</h2>
+<ol type="1">
+<li><strong>On-Device Processing</strong>:<ul>
+<li>Model runs locally (Gemini Nano)</li>
+<li>No data sent to servers</li>
+<li>Works offline after download</li>
+</ul>
+</li>
+<li><strong>Token Limits</strong>:<ul>
+<li>Each session has a token budget</li>
+<li>Tokens = words + punctuation + system prompt</li>
+<li>Monitor with <code>tokensSoFar</code> and <code>tokensLeft</code></li>
+</ul>
+</li>
+<li><strong>Streaming</strong>:<ul>
+<li>Responses arrive incrementally</li>
+<li>Better UX for long responses</li>
+<li>Lower perceived latency</li>
+</ul>
+</li>
+</ol>
+<h2 is-upgraded>Angular Signals vs Observables</h2>
+<p><strong>Signals (Used Here):</strong></p>
+<pre><code language="language-typescript" class="language-typescript">const count = signal(0);
+count.set(5);              // Update
+const value = count();     // Read
+</code></pre>
+<p><strong>Observables (Alternative):</strong></p>
+<pre><code language="language-typescript" class="language-typescript">const count$ = new BehaviorSubject(0);
+count$.next(5);            // Update
+count$.subscribe(v =&gt; {}); // Read
+</code></pre>
+<p><strong>Why Signals?</strong></p>
+<ul>
+<li>Simpler API for synchronous state</li>
+<li>Better performance</li>
+<li>Less boilerplate</li>
+<li>Native Angular feature (v16+)</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Next Steps" duration="3">
+        <p>Congratulations on completing the codelab! Here&#39;s what you can do next:</p>
+<h2 is-upgraded>Extend the Service</h2>
+<ol type="1">
+<li><strong>Add More Features</strong>:<ul>
+<li>Sentiment analysis</li>
+<li>Language translation</li>
+<li>Content summarization</li>
+</ul>
+</li>
+<li><strong>Improve Error Handling</strong>:<ul>
+<li>Retry logic for failed requests</li>
+<li>Better error messages</li>
+<li>Fallback strategies</li>
+</ul>
+</li>
+<li><strong>Optimize Performance</strong>:<ul>
+<li>Image compression before sending</li>
+<li>Session caching</li>
+<li>Request debouncing</li>
+</ul>
+</li>
+</ol>
+<h2 is-upgraded>Deploy Your App</h2>
+<pre><code language="language-bash" class="language-bash">npm run build
+firebase init hosting
+firebase deploy
+</code></pre>
+<h2 is-upgraded>Share Your Creation</h2>
+<ul>
+<li>Add to portfolio</li>
+<li>Share on social media</li>
+<li>Write a blog post</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Additional Resources" duration="1">
+        <h2 is-upgraded>Documentation</h2>
+<ul>
+<li><a href="https://developer.chrome.com/docs/ai/built-in" target="_blank">Chrome AI Origin Trial</a></li>
+<li><a href="https://angular.dev/guide/signals" target="_blank">Angular Signals Guide</a></li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Streams_API" target="_blank">Web Streams API</a></li>
+</ul>
+<h2 is-upgraded>Example Use Cases</h2>
+<ul>
+<li><strong>Content Creation</strong>: Blog post drafting and editing</li>
+<li><strong>Accessibility</strong>: Screen reader enhancements</li>
+<li><strong>Education</strong>: Writing assistance for students</li>
+<li><strong>Business</strong>: Email and document polishing</li>
+</ul>
+<h2 is-upgraded>Community</h2>
+<ul>
+<li><a href="https://github.com/topics/chrome-ai" target="_blank">Chrome AI on GitHub</a></li>
+<li><a href="https://discord.gg/angular" target="_blank">Angular Discord</a></li>
+<li><a href="https://stackoverflow.com/questions/tagged/chrome-ai" target="_blank">Stack Overflow</a></li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Congratulations!" duration="1">
+        <p>You&#39;ve successfully built a Chrome AI service! You now understand:</p>
+<p>✅ How to integrate Chrome&#39;s built-in AI API<br> ✅ Angular signals for reactive state management<br> ✅ Streaming responses with AsyncGenerators<br> ✅ Type-safe AI interactions<br> ✅ Building privacy-focused, offline-capable AI apps</p>
+<p><strong>What&#39;s Next?</strong> Take this foundation and build something amazing! 🚀</p>
+<p><strong>Made with ❤️ using Chrome&#39;s Built-in AI and Angular</strong></p>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/claat-public/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/prettify.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/codelab-elements.js"></script>
+  <script src="//support.google.com/inapp/api.js"></script>
+
+</body>
+</html>

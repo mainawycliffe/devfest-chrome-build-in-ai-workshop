@@ -1,0 +1,30 @@
+{
+  "environment": "web",
+  "format": "html",
+  "prefix": "https://storage.googleapis.com",
+  "mainga": "UA-49880327-14",
+  "updated": "2025-10-30T18:54:41+03:00",
+  "id": "chrome-ai-angular-workshop",
+  "duration": 101,
+  "title": "Chrome AI Service Codelab",
+  "authors": "Maina Wycliffe",
+  "summary": "Chrome AI Service with Angular",
+  "source": "codelab.md",
+  "theme": "",
+  "status": [
+    "published"
+  ],
+  "category": [
+    "web",
+    "angular",
+    "ai"
+  ],
+  "tags": [
+    "angular",
+    "chrome-ai",
+    "devfest",
+    "gemini-nano"
+  ],
+  "feedback": "https://github.com/mainawycliffe/devfest-chrome-build-in-ai-workshop",
+  "url": "chrome-ai-angular-workshop"
+}
