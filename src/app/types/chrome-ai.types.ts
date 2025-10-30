@@ -1,52 +1,18 @@
-export type AIAvailability = 'readily' | 'available' | 'after-download' | 'downloadable' | 'downloading' | 'no';
+// TODO: Workshop Step 2 - Add Chrome AI Type Definitions
+// You will define TypeScript interfaces for Chrome's Built-in AI API here
 
-export interface AILanguageModelCreateOptions {
-  signal?: AbortSignal;
-  systemPrompt?: string;
-  initialPrompts?: AILanguageModelPrompt[];
-  topK?: number;
-  temperature?: number;
-  monitor?: (monitor: AICreateMonitor) => void;
-}
+// TODO: Step 2.1 - Define AIAvailability type
+// Hint: It should include: 'readily', 'available', 'after-download', 'downloadable', 'downloading', 'no'
 
-export interface AICreateMonitor {
-  addEventListener(type: 'downloadprogress', listener: (e: DownloadProgressEvent) => void): void;
-}
+// TODO: Step 2.2 - Define AILanguageModelCreateOptions interface
+// Hint: Include optional properties like systemPrompt, temperature, monitor, etc.
 
-export interface DownloadProgressEvent {
-  loaded: number; // Progress from 0 to 1
-}
+// TODO: Step 2.3 - Define AICreateMonitor interface
+// Hint: It should have addEventListener for 'downloadprogress' events
 
-export interface AILanguageModelPrompt {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-  prefix?: boolean;
-}
+// TODO: Step 2.4 - Define AILanguageModel interface
+// Hint: Include methods like prompt(), promptStreaming(), destroy()
+// Also include properties: maxTokens, tokensSoFar, tokensLeft
 
-export interface AILanguageModel {
-  prompt(input: string | AILanguageModelPrompt[]): Promise<string>;
-  promptStreaming(input: string | AILanguageModelPrompt[]): ReadableStream<string>;
-  countPromptTokens(input: string): Promise<number>;
-  maxTokens: number;
-  tokensSoFar: number;
-  tokensLeft: number;
-  clone(): Promise<AILanguageModel>;
-  destroy(): void;
-}
-
-export interface AILanguageModelParams {
-  defaultTopK: number;
-  maxTopK: number;
-  defaultTemperature: number;
-  maxTemperature: number;
-}
-
-export interface LanguageModelAPI {
-  availability(): Promise<AIAvailability>;
-  create(options?: AILanguageModelCreateOptions): Promise<AILanguageModel>;
-  params(): Promise<AILanguageModelParams>;
-}
-
-declare global {
-  const LanguageModel: LanguageModelAPI;
-}
+// TODO: Step 2.5 - Define LanguageModelAPI interface and global declaration
+// Hint: This makes the global 'LanguageModel' object available in TypeScript

@@ -19,22 +19,35 @@ import { ChromeAiService } from '../../services/chrome-ai.service';
 export class ScreenshotAnalyzerComponent implements OnInit {
   private chromeAi = inject(ChromeAiService);
 
-  readonly isAiAvailable = this.chromeAi.isAvailable;
-  readonly availability = this.chromeAi.availability;
-  readonly isDownloading = this.chromeAi.isDownloading;
-  readonly downloadProgress = this.chromeAi.downloadProgress;
+  // TODO: Workshop Step 5 - Wire up AI service signals
+  // Uncomment these after implementing the service
+  // readonly isAiAvailable = this.chromeAi.isAvailable;
+  // readonly availability = this.chromeAi.availability;
+  // readonly isDownloading = this.chromeAi.isDownloading;
+  // readonly downloadProgress = this.chromeAi.downloadProgress;
+  
+  // Temporary placeholders for workshop
+  readonly isAiAvailable = signal<boolean>(false);
+  readonly availability = signal<'readily' | 'available' | 'after-download' | 'downloadable' | 'downloading' | 'no'>('no');
+  readonly isDownloading = signal<boolean>(false);
+  readonly downloadProgress = signal<number>(0);
+  
   readonly analysisResult = signal<string>('');
   readonly isAnalyzing = signal<boolean>(false);
   readonly error = signal<string>('');
 
   async ngOnInit(): Promise<void> {
-    await this.chromeAi.checkAvailability();
+    // TODO: Workshop Step 5.1 - Check AI availability on component init
+    // await this.chromeAi.checkAvailability();
   }
 
   async downloadModel(): Promise<void> {
+    // TODO: Workshop Step 5.2 - Implement model download
+    // Call chromeAi.initializeSession() and handle errors
     try {
-      await this.chromeAi.initializeSession();
-      await this.chromeAi.checkAvailability();
+      // await this.chromeAi.initializeSession();
+      // await this.chromeAi.checkAvailability();
+      console.warn('⚠️ downloadModel() not implemented yet');
     } catch (err) {
       console.error('Failed to download model:', err);
       this.error.set('Failed to download the model. Please try again.');
@@ -42,22 +55,27 @@ export class ScreenshotAnalyzerComponent implements OnInit {
   }
 
   async onImageSelected(imageData: string): Promise<void> {
+    // TODO: Workshop Step 5.3 - Implement image analysis
+    // Use chromeAi.analyzeScreenshotStreaming() to get streaming results
     this.error.set('');
     this.analysisResult.set('');
     this.isAnalyzing.set(true);
 
     try {
-      let result = '';
-      const stream = this.chromeAi.analyzeScreenshotStreaming(imageData);
+      // let result = '';
+      // const stream = this.chromeAi.analyzeScreenshotStreaming(imageData);
 
-      for await (const chunk of stream) {
-        result += chunk;
-        this.analysisResult.set(result);
-      }
+      // for await (const chunk of stream) {
+      //   result += chunk;
+      //   this.analysisResult.set(result);
+      // }
 
-      if (!result || result.trim().length === 0) {
-        this.error.set('No text was extracted from the image. The image might not contain readable text.');
-      }
+      // if (!result || result.trim().length === 0) {
+      //   this.error.set('No text was extracted from the image.');
+      // }
+      
+      console.warn('⚠️ onImageSelected() not fully implemented yet');
+      this.error.set('AI analysis not implemented yet. Complete Workshop Steps 2-4 first.');
     } catch (err: any) {
       console.error('Analysis failed:', err);
       
