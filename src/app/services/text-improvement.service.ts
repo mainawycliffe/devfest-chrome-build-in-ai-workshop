@@ -1,13 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { ChromeAiService } from './chrome-ai.service';
-
-export type ImprovementType = 'grammar' | 'polish' | 'elaborate' | 'shorten' | 'hashtags';
-
-export interface TextSuggestion {
-  id: string;
-  text: string;
-  selected: boolean;
-}
+import type { ImprovementType, TextSuggestion, SocialPlatform } from '../models/text-improvement.models';
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +11,7 @@ export class TextImprovementService {
   readonly isProcessing = signal<boolean>(false);
   readonly currentOperation = signal<ImprovementType | null>(null);
 
-  private getPrompt(text: string, type: ImprovementType, platform?: string): string {
+  private getPrompt(text: string, type: ImprovementType, platform?: SocialPlatform): string {
     const platformContext = this.getPlatformContext(platform);
     
     const prompts: Record<ImprovementType, string> = {
@@ -36,18 +29,18 @@ export class TextImprovementService {
     return prompts[type];
   }
 
-  private getPlatformContext(platform?: string): string {
-    const contexts: Record<string, string> = {
-      twitter: ' for Twitter/X (keep it punchy, use threads if needed, maximize retweets)',
-      bluesky: ' for Bluesky (conversational, authentic, community-focused)',
-      linkedin: ' for LinkedIn (professional but human, thought leadership, value-driven)',
-      facebook: ' for Facebook (friendly, shareable, conversation-starting)'
-    };
-    
-    return platform && contexts[platform] ? contexts[platform] : '';
+  private readonly platformContexts: Record<SocialPlatform, string> = {
+    twitter: ' for Twitter/X (keep it punchy, use threads if needed, maximize retweets)',
+    bluesky: ' for Bluesky (conversational, authentic, community-focused)',
+    linkedin: ' for LinkedIn (professional but human, thought leadership, value-driven)',
+    facebook: ' for Facebook (friendly, shareable, conversation-starting)'
+  };
+
+  private getPlatformContext(platform?: SocialPlatform): string {
+    return platform ? this.platformContexts[platform] : '';
   }
 
-  async improveText(text: string, type: ImprovementType, platform?: string): Promise<TextSuggestion[]> {
+  async improveText(text: string, type: ImprovementType, platform?: SocialPlatform): Promise<TextSuggestion[]> {
     if (!text.trim()) {
       throw new Error('Please enter some text first');
     }
@@ -94,7 +87,7 @@ export class TextImprovementService {
     }
   }
 
-  async generateHashtags(text: string, platform?: string): Promise<string[]> {
+  async generateHashtags(text: string, platform?: SocialPlatform): Promise<string[]> {
     const suggestions = await this.improveText(text, 'hashtags', platform);
     // Parse hashtags from all suggestions
     const allTags = suggestions

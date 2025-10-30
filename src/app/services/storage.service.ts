@@ -1,19 +1,13 @@
 import { Injectable, signal } from '@angular/core';
-
-export interface TextHistory {
-  id?: number;
-  text: string;
-  platform: string;
-  timestamp: number;
-  characterCount: number;
-}
+import type { TextHistory } from '../models/text-improvement.models';
 
 @Injectable({
   providedIn: 'root'
 })
 export class StorageService {
-  private dbName = 'texttzar-db';
-  private storeName = 'text-history';
+  private readonly dbName = 'texttzar-db';
+  private readonly storeName = 'text-history';
+  private readonly draftKey = 'texttzar-draft';
   private db: IDBDatabase | null = null;
   
   readonly history = signal<TextHistory[]>([]);
@@ -142,14 +136,14 @@ export class StorageService {
 
   // Auto-save draft to localStorage for quick recovery
   saveDraft(text: string): void {
-    localStorage.setItem('texttzar-draft', text);
+    localStorage.setItem(this.draftKey, text);
   }
 
   loadDraft(): string {
-    return localStorage.getItem('texttzar-draft') || '';
+    return localStorage.getItem(this.draftKey) || '';
   }
 
   clearDraft(): void {
-    localStorage.removeItem('texttzar-draft');
+    localStorage.removeItem(this.draftKey);
   }
 }

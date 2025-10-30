@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   inject,
+  OnDestroy,
   OnInit,
   signal,
 } from '@angular/core';
@@ -12,31 +13,13 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 import { ChromeAiService } from '../../services/chrome-ai.service';
 import { StorageService } from '../../services/storage.service';
-import {
+import { TextImprovementService } from '../../services/text-improvement.service';
+import type {
   ImprovementType,
-  TextImprovementService,
   TextSuggestion,
-} from '../../services/text-improvement.service';
-
-interface EnhancementOption {
-  type: ImprovementType;
-  label: string;
-  icon: string;
-  description: string;
-}
-
-export type SocialPlatform =
-  | 'twitter'
-  | 'linkedin'
-  | 'facebook'
-  | 'bluesky';
-
-interface PlatformConfig {
-  name: string;
-  charLimit: number;
-  icon: string;
-  tone: string;
-}
+  SocialPlatform,
+} from '../../models/text-improvement.models';
+import { PLATFORMS, ENHANCEMENT_OPTIONS } from '../../models/text-improvement.models';
 
 @Component({
   selector: 'app-root',
@@ -45,7 +28,7 @@ interface PlatformConfig {
   templateUrl: './text-improver.component.html',
   styleUrl: './text-improver.component.css',
 })
-export class TextImproverComponent implements OnInit {
+export class TextImproverComponent implements OnInit, OnDestroy {
   private textService = inject(TextImprovementService);
   private chromeAi = inject(ChromeAiService);
   private sanitizer = inject(DomSanitizer);
@@ -70,32 +53,7 @@ export class TextImproverComponent implements OnInit {
   readonly isProcessing = this.textService.isProcessing;
   readonly currentOperation = this.textService.currentOperation;
 
-  readonly platforms: Record<SocialPlatform, PlatformConfig> = {
-    twitter: {
-      name: 'Twitter/X',
-      charLimit: 280,
-      icon: '𝕏',
-      tone: 'Concise and engaging',
-    },
-    bluesky: {
-      name: 'Bluesky',
-      charLimit: 300,
-      icon: '🦋',
-      tone: 'Conversational',
-    },
-    linkedin: {
-      name: 'LinkedIn',
-      charLimit: 3000,
-      icon: '💼',
-      tone: 'Professional',
-    },
-    facebook: {
-      name: 'Facebook',
-      charLimit: 63206,
-      icon: '👥',
-      tone: 'Friendly and social',
-    },
-  };
+  readonly platforms = PLATFORMS;
 
   readonly characterCount = computed(() => this.originalText().length);
   readonly wordCount = computed(() => {
@@ -149,32 +107,7 @@ export class TextImproverComponent implements OnInit {
     }
   }
 
-  readonly enhancementOptions: EnhancementOption[] = [
-    {
-      type: 'grammar',
-      label: 'Grammar Check',
-      icon: '✓',
-      description: 'Fix grammar, spelling, and punctuation',
-    },
-    {
-      type: 'polish',
-      label: 'Polish',
-      icon: '✨',
-      description: 'Make it more professional and engaging',
-    },
-    {
-      type: 'elaborate',
-      label: 'Elaborate',
-      icon: '📝',
-      description: 'Add more detail and context',
-    },
-    {
-      type: 'shorten',
-      label: 'Shorten',
-      icon: '✂️',
-      description: 'Make it more concise',
-    },
-  ];
+  readonly enhancementOptions = ENHANCEMENT_OPTIONS;
 
   onTextChange(): void {
     // Auto-save draft with debounce
@@ -200,9 +133,10 @@ export class TextImproverComponent implements OnInit {
       );
       this.suggestions.set(result);
       this.showSuggestions.set(true);
-    } catch (err: any) {
-      this.error.set(err.message || 'Failed to improve text');
-      console.error('Improvement failed:', err);
+    } catch (err) {
+      const error = err as Error;
+      this.error.set(error.message || 'Failed to improve text');
+      console.error('Improvement failed:', error);
     }
   }
 
@@ -234,9 +168,10 @@ export class TextImproverComponent implements OnInit {
         this.selectedPlatform()
       );
       this.hashtags.set(tags);
-    } catch (err: any) {
-      this.error.set(err.message || 'Failed to generate hashtags');
-      console.error('Hashtag generation failed:', err);
+    } catch (err) {
+      const error = err as Error;
+      this.error.set(error.message || 'Failed to generate hashtags');
+      console.error('Hashtag generation failed:', error);
     }
   }
 
@@ -309,5 +244,11 @@ export class TextImproverComponent implements OnInit {
     this.hashtags.set([]);
     this.error.set('');
     this.showSuggestions.set(false);
+  }
+
+  ngOnDestroy(): void {
+    if (this.autoSaveTimeout) {
+      clearTimeout(this.autoSaveTimeout);
+    }
   }
 }
