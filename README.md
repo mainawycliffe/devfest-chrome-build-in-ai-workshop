@@ -1,6 +1,6 @@
 # 🚀 Chrome AI APIs (On Device AI with Chrome) Codelab
 
-A step-by-step guide to building an Angular service that leverages Chrome's built-in AI (Gemini Nano) for on-device text processing and OCR capabilities.
+A step-by-step guide to building an Angular service that leverages Chrome's built-in AI (Gemini Nano) for on-device text processing and improvement.
 
 ## 📋 What You'll Build
 
@@ -9,8 +9,8 @@ By the end of this codelab, you'll have created a fully functional Chrome AI ser
 - Check AI availability in the browser
 - Initialize AI sessions with custom system prompts
 - Stream AI responses in real-time
-- Process images for OCR (Optical Character Recognition)
-- Improve text with grammar checking, polishing, and more
+- Improve text with grammar checking, polishing, shortening, and elaborating
+- Process user input with on-device AI for privacy-focused text enhancement
 
 ## 🎯 Learning Objectives
 
@@ -379,32 +379,31 @@ async initializeSession(): Promise<void> {
        * System Prompt: This is like giving instructions to an employee.
        * It defines the AI's role, capabilities, and constraints.
        *
-       * For this workshop, we're creating an OCR (text extraction) system.
+       * For this workshop, we're creating a text improvement assistant.
        * The prompt is detailed to ensure accurate, consistent results.
        */
-      systemPrompt: `You are a professional OCR (Optical Character Recognition) system powered by AI. Your primary function is to accurately extract and transcribe ALL visible text from images.
+      systemPrompt: `You are an intelligent text improvement assistant powered by AI. Your primary function is to enhance and refine text based on user requests.
 
       CORE RESPONSIBILITIES:
-      - Extract ALL text content from images with maximum accuracy
-      - Preserve original formatting, line breaks, and text structure
-      - Maintain proper spacing and paragraph organization
-      - Handle multiple languages and special characters
-      - Recognize text in various fonts, sizes, and styles
+      - Improve grammar, spelling, and punctuation
+      - Enhance clarity and readability
+      - Adjust text length (shorten or elaborate) while preserving meaning
+      - Polish writing style and tone
+      - Maintain the original intent and voice
 
-      EXTRACTION RULES:
-      1. Output ONLY the extracted text - no descriptions, analysis, or commentary
-      2. Preserve the reading order (top-to-bottom, left-to-right)
-      3. Maintain original capitalization and punctuation
-      4. Use proper line breaks to reflect the image layout
-      5. For tables, preserve row/column structure using spacing
-      6. For unclear text, use [unclear: approximate_text] notation
-      7. If no text is found, respond: "No text detected in image."
+      IMPROVEMENT RULES:
+      1. Provide clear, natural-sounding improvements
+      2. Preserve the author's original meaning and intent
+      3. Adapt tone and style based on context
+      4. Fix errors without changing the core message
+      5. When shortening, keep the most important information
+      6. When elaborating, add relevant details and context
 
       QUALITY STANDARDS:
-      - Accuracy is paramount - transcribe exactly what you see
-      - Be thorough - don't skip small text or watermarks
-      - Be precise - don't infer or correct spelling errors
-      - Be structured - maintain logical text flow`,
+      - Accuracy is paramount - maintain factual correctness
+      - Be helpful - provide meaningful improvements
+      - Be respectful - preserve the author's voice
+      - Be clear - ensure the output is easy to understand`,
 
       /**
        * Monitor callback: Tracks download progress of the AI model.
@@ -449,15 +448,15 @@ async initializeSession(): Promise<void> {
 - **Error Handling**: Gracefully handles initialization failures
 - **First Run**: Model download (~1.5GB) happens automatically
 
-### 4.5 Implement Streaming Methods
+### 4.5 Implement Streaming Method
 
-#### `analyzeScreenshotStreaming()`
+#### `analyzeText()`
 
-This streams AI responses for image analysis:
+This streams AI responses for text improvement:
 
 ```typescript path=null start=null
 /**
- * Analyzes a screenshot using AI and streams the response back incrementally.
+| * Analyzes and improves text using AI with streaming responses.
  * This provides better UX than waiting for the entire response.
  *
  * This is an AsyncGenerator function (note the async *) which means:
@@ -622,21 +621,14 @@ destroySession(): void {
 2. Open DevTools Console (F12)
 3. You should see availability logs
 
-### 5.2 Test Screenshot Analysis
+### 5.2 Test Text Improvement
 
-1. Click on the **Screenshot Analyzer** tab
-2. Click **Upload Screenshot** or drag & drop an image
+1. Enter some text in the text area (e.g., "i love angular its grate")
+2. Click **Check Grammar**, **Polish**, **Shorten**, or **Elaborate**
 3. Watch the console for download progress (first time only)
-4. See extracted text appear in real-time
+4. Watch AI corrections stream in real-time
 
-### 5.3 Test Text Improvement
-
-1. Click on the **Text Improver** tab
-2. Enter some text (e.g., "i love angular its grate")
-3. Click **Check Grammar**
-4. Watch AI corrections stream in
-
-### 5.4 Expected Console Output
+### 5.3 Expected Console Output
 
 ```
 ✅ Availability: after-download
@@ -674,7 +666,7 @@ Token info: { maxTokens: 4096, tokensSoFar: 150, tokensLeft: 3946 }
 
 **Solution**:
 
-1. Images too large - reduce image size before upload
+1. Text too large - try with smaller chunks of text
 2. Session reached token limit - call `destroySession()` and reinitialize
 3. Check token usage in console logs
 
@@ -753,7 +745,7 @@ count$.subscribe((v) => {}); // Read
    - Fallback strategies
 
 3. **Optimize Performance**:
-   - Image compression before sending
+   - Text chunking for large inputs
    - Session caching
    - Request debouncing
 
@@ -810,9 +802,8 @@ count$.subscribe((v) => {}); // Read
 - [ ] `checkAvailability()` works and logs status
 - [ ] `initializeSession()` downloads model on first run
 - [ ] Progress bar shows during download
-- [ ] Screenshot analysis extracts text correctly
 - [ ] Text streaming works in real-time
-- [ ] Text improver features work (grammar, polish, etc.)
+- [ ] Text improver features work (grammar, polish, shorten, elaborate)
 - [ ] No console errors (only warnings are OK)
 - [ ] Session cleanup works with `destroySession()`
 
