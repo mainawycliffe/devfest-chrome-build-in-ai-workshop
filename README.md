@@ -131,14 +131,22 @@ First, we need to define types for Chrome's AI API.
 Create or verify this file contains:
 
 ```typescript path=/Users/mainawycliffe/projects/screenshot-analyzer/src/app/types/chrome-ai.types.ts start=1
+/**
+ * Represents the different states of the Chrome AI model availability.
+ * This type is used to determine if the model is ready, needs downloading, or unavailable.
+ */
 export type AIAvailability = 
-  | 'readily'        // Model is ready to use immediately
+  | 'readily'        // Model is ready to use immediately (already downloaded and initialized)
   | 'available'      // Model is available but needs initialization
-  | 'after-download' // Model needs to be downloaded
-  | 'downloadable'   // Model can be downloaded
-  | 'downloading'    // Model is currently downloading
-  | 'no';            // Model not available
+  | 'after-download' // Model needs to be downloaded before use
+  | 'downloadable'   // Model can be downloaded from Chrome components
+  | 'downloading'    // Model is currently being downloaded
+  | 'no';            // Model is not available (flags not enabled or unsupported browser)
 
+/**
+ * Interface for monitoring AI model download progress.
+ * This allows us to track when the ~1.5GB Gemini Nano model is downloading.
+ */
 export interface AILanguageModelMonitor {
   addEventListener(
     type: 'downloadprogress',
@@ -146,31 +154,58 @@ export interface AILanguageModelMonitor {
   ): void;
 }
 
+/**
+ * Configuration options for creating an AI language model session.
+ * These options control how the AI behaves and allow progress monitoring.
+ */
 export interface AILanguageModelCreateOptions {
-  systemPrompt?: string;
-  signal?: AbortSignal;
-  monitor?: (monitor: AILanguageModelMonitor) => void;
+  systemPrompt?: string;  // Defines the AI's behavior, role, and constraints
+  signal?: AbortSignal;   // Allows cancellation of the creation process
+  monitor?: (monitor: AILanguageModelMonitor) => void;  // Callback for download progress
 }
 
+/**
+ * Interface representing an active AI language model session.
+ * This is what you get after calling LanguageModel.create().
+ */
 export interface AILanguageModel {
+  // Send a prompt and get the complete response as a Promise
   prompt(input: string): Promise<string>;
+  
+  // Send a prompt and get a streaming response (better UX for long responses)
   promptStreaming(input: string): ReadableStream;
+  
+  // Clean up the session and free resources
   destroy(): void;
+  
+  // Maximum tokens this session can handle (typically 4096)
   maxTokens: number;
+  
+  // How many tokens have been used so far in this session
   tokensSoFar: number;
+  
+  // How many tokens remain available in this session
   tokensLeft: number;
 }
 
-// Global API
+/**
+ * Global Chrome AI API declaration.
+ * This makes TypeScript aware of the LanguageModel global object.
+ */
 declare global {
   interface LanguageModelConstructor {
+    // Creates a new AI session with the specified options
     create(options?: AILanguageModelCreateOptions): Promise<AILanguageModel>;
+    
+    // Checks if the AI model is available in the current browser
     availability(): Promise<AIAvailability>;
   }
 
+  // The global LanguageModel object provided by Chrome
   const LanguageModel: LanguageModelConstructor;
 }
 
+// This empty export makes this file a module
 export {};
 ```
 
@@ -191,7 +226,10 @@ Now let's build the service step by step.
 Open `src/app/services/chrome-ai.service.ts` and update imports:
 
 ```typescript path=/Users/mainawycliffe/projects/screenshot-analyzer/src/app/services/chrome-ai.service.ts start=1
+// Import Angular's dependency injection decorator
 import { Injectable, signal } from '@angular/core';
+
+// Import our custom types that define the Chrome AI API structure
 import { AILanguageModel, AIAvailability } from '../types/chrome-ai.types';
 ```
 
@@ -201,13 +239,37 @@ Replace the placeholder signals with proper implementations:
 
 ```typescript path=/Users/mainawycliffe/projects/screenshot-analyzer/src/app/services/chrome-ai.service.ts start=8
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root'  // Makes this service a singleton available throughout the app
 })
 export class ChromeAiService {
+  /**
+   * Stores the active AI session. Private because external code shouldn't
+   * manipulate the session directly - they should use the service methods.
+   */
   private session = signal<AILanguageModel | null>(null);
+  
+  /**
+   * Simple boolean flag indicating if Chrome AI is available.
+   * Components can use this to show/hide AI features.
+   */
   readonly isAvailable = signal<boolean>(false);
+  
+  /**
+   * Detailed availability status with more granular information.
+   * Useful for showing specific error messages to users.
+   */
   readonly availability = signal<AIAvailability>('no');
+  
+  /**
+   * Download progress as a percentage (0-100).
+   * Used to show a progress bar during the initial model download.
+   */
   readonly downloadProgress = signal<number>(0);
+  
+  /**
+   * Flag indicating if the model is currently downloading.
+   * Prevents duplicate download attempts and shows loading states.
+   */
   readonly isDownloading = signal<boolean>(false);
 ```
 
@@ -221,30 +283,47 @@ export class ChromeAiService {
 This method checks if Chrome AI is available:
 
 ```typescript path=null start=null
+/**
+ * Checks if Chrome's built-in AI is available in the current browser.
+ * This should be called before attempting to use any AI features.
+ * 
+ * @returns Promise<boolean> - true if AI is available, false otherwise
+ */
 async checkAvailability(): Promise<boolean> {
-  // Check if the LanguageModel API exists globally
+  // Step 1: Check if the LanguageModel API exists in the global scope
+  // If it doesn't exist, the flags aren't enabled or browser doesn't support it
   if (typeof LanguageModel === 'undefined') {
+    // Provide helpful console warnings to guide developers
     console.warn('❌ Chrome AI not available. Make sure you have:');
     console.warn('1. Chrome Canary/Dev 128+');
     console.warn('2. Enabled chrome://flags/#prompt-api-for-gemini-nano');
     console.warn('3. Enabled chrome://flags/#optimization-guide-on-device-model');
     console.warn('4. Restarted Chrome');
+    
+    // Update our signals to reflect unavailability
     this.isAvailable.set(false);
     this.availability.set('no');
     return false;
   }
 
   try {
-    // Check the availability status
+    // Step 2: Call the Chrome API to check detailed availability status
+    // This will return one of: 'readily', 'available', 'after-download', etc.
     const status = await LanguageModel.availability();
     console.log('✅ Availability:', status);
     
-    // Update signals
+    // Step 3: Update our reactive signals with the results
+    // This will automatically update any UI components watching these signals
     this.availability.set(status);
+    
+    // Set isAvailable to true for any status except 'no'
+    // Even 'after-download' means it's available, just needs downloading
     this.isAvailable.set(status !== 'no');
     
+    // Return simple boolean for convenience
     return status !== 'no';
   } catch (error) {
+    // Handle any errors (e.g., network issues, API changes)
     console.error('❌ Failed to check AI availability:', error);
     this.isAvailable.set(false);
     this.availability.set('no');
@@ -264,16 +343,35 @@ async checkAvailability(): Promise<boolean> {
 This creates an AI session with a custom system prompt:
 
 ```typescript path=null start=null
+/**
+ * Initializes a new AI session with a custom system prompt.
+ * This creates the AI "personality" and defines its behavior.
+ * 
+ * IMPORTANT: On first run, this will download ~1.5GB model (Gemini Nano).
+ * Subsequent calls will use the cached model.
+ * 
+ * @throws Error if Chrome AI is not available
+ */
 async initializeSession(): Promise<void> {
+  // Step 1: Guard clause - ensure AI is available before proceeding
   if (!this.isAvailable()) {
     throw new Error('Chrome AI is not available');
   }
 
   try {
+    // Step 2: Set download flags to show loading UI
     this.isDownloading.set(true);
     this.downloadProgress.set(0);
 
+    // Step 3: Create the AI session with configuration
     const aiSession = await LanguageModel.create({
+      /**
+       * System Prompt: This is like giving instructions to an employee.
+       * It defines the AI's role, capabilities, and constraints.
+       * 
+       * For this workshop, we're creating an OCR (text extraction) system.
+       * The prompt is detailed to ensure accurate, consistent results.
+       */
       systemPrompt: `You are a professional OCR (Optical Character Recognition) system powered by AI. Your primary function is to accurately extract and transcribe ALL visible text from images.
       
       CORE RESPONSIBILITIES:
@@ -297,22 +395,38 @@ async initializeSession(): Promise<void> {
       - Be thorough - don't skip small text or watermarks
       - Be precise - don't infer or correct spelling errors
       - Be structured - maintain logical text flow`,
+      
+      /**
+       * Monitor callback: Tracks download progress of the AI model.
+       * This is crucial for UX - users need to know the ~1.5GB model is downloading.
+       * 
+       * The callback receives a monitor object that emits progress events.
+       */
       monitor: (m) => {
         m.addEventListener('downloadprogress', (e) => {
+          // Convert loaded/total ratio to percentage
           const progress = e.loaded * 100;
           console.log(`📥 Downloaded ${progress.toFixed(0)}%`);
+          
+          // Update our signal so UI can show a progress bar
           this.downloadProgress.set(progress);
         });
       }
     });
     
+    // Step 4: Store the session in our signal for later use
     this.session.set(aiSession);
+    
+    // Step 5: Update flags to indicate download is complete
     this.isDownloading.set(false);
     this.downloadProgress.set(100);
     console.log('✅ Session initialized');
   } catch (error) {
+    // Handle errors gracefully - could be network issues, storage issues, etc.
     console.error('❌ Failed to initialize AI session:', error);
     this.isDownloading.set(false);
+    
+    // Re-throw so calling code knows something went wrong
     throw error;
   }
 }
@@ -331,36 +445,66 @@ async initializeSession(): Promise<void> {
 This streams AI responses for image analysis:
 
 ```typescript path=null start=null
+/**
+ * Analyzes a screenshot using AI and streams the response back incrementally.
+ * This provides better UX than waiting for the entire response.
+ * 
+ * This is an AsyncGenerator function (note the async *) which means:
+ * - It can yield multiple values over time
+ * - Calling code can process chunks as they arrive
+ * - UI can update in real-time as text is extracted
+ * 
+ * @param imageData - Base64 encoded image string
+ * @param customPrompt - Optional custom prompt (defaults to OCR extraction)
+ * @yields string - Chunks of the AI response as they're generated
+ */
 async *analyzeScreenshotStreaming(
   imageData: string, 
   customPrompt?: string
 ): AsyncGenerator<string> {
+  // Step 1: Get the current session (if it exists)
   const currentSession = this.session();
   
+  // Step 2: Lazy initialization - create session if it doesn't exist
+  // This is helpful because we only download the model when actually needed
   if (!currentSession) {
     await this.initializeSession();
   }
 
+  // Step 3: Use custom prompt or default to OCR extraction
   const prompt = customPrompt || 
     'Extract all text from this image. Output only the text, nothing else.';
 
   try {
+    // Step 4: Combine the prompt with the image data
     const fullPrompt = `${prompt}\n\nImage data: ${imageData}`;
-    const session = this.session()!;
+    const session = this.session()!;  // Non-null assertion - we know session exists now
     
-    // Log token information for debugging
+    // Step 5: Log token information for debugging and monitoring
+    // Tokens are like "currency" - each session has a limited budget
     console.log('Token info:', {
-      maxTokens: session.maxTokens,
-      tokensSoFar: session.tokensSoFar,
-      tokensLeft: session.tokensLeft
+      maxTokens: session.maxTokens,        // Total tokens available (usually 4096)
+      tokensSoFar: session.tokensSoFar,    // How many we've used
+      tokensLeft: session.tokensLeft       // How many remain
     });
     
+    // Step 6: Call the AI with streaming enabled
+    // This returns a ReadableStream that emits chunks of text
     const stream = session.promptStreaming(fullPrompt);
+    
+    // Step 7: Get a reader to consume the stream
     const reader = stream.getReader();
     
+    // Step 8: Read chunks in a loop and yield them to the caller
+    // This is the "streaming" part - we emit text as it arrives
     while (true) {
       const { done, value } = await reader.read();
+      
+      // If stream is complete, exit the loop
       if (done) break;
+      
+      // Yield the chunk to whoever is consuming this generator
+      // In the UI, each yield will trigger an update
       yield value;
     }
   } catch (error: any) {
@@ -375,22 +519,42 @@ async *analyzeScreenshotStreaming(
 For text improvement features:
 
 ```typescript path=null start=null
+/**
+ * Analyzes plain text using AI (no image processing).
+ * Used for text improvement features: grammar check, polish, elaborate, etc.
+ * 
+ * This method is simpler than analyzeScreenshotStreaming because it doesn't
+ * need to handle image data - just a text prompt.
+ * 
+ * @param prompt - The text prompt to send to the AI
+ * @yields string - Chunks of the AI response as they're generated
+ */
 async *analyzeText(prompt: string): AsyncGenerator<string> {
+  // Step 1: Check if we have an active session
   const currentSession = this.session();
   
+  // Step 2: Initialize if needed (lazy loading pattern)
   if (!currentSession) {
     await this.initializeSession();
   }
 
   try {
+    // Step 3: Get the session (we know it exists now)
     const session = this.session()!;
+    
+    // Step 4: Send the prompt and get a streaming response
+    // The AI will start generating text immediately
     const stream = session.promptStreaming(prompt);
+    
+    // Step 5: Get a reader to consume the stream
     const reader = stream.getReader();
     
+    // Step 6: Read and yield chunks as they arrive
+    // This creates a smooth, real-time experience in the UI
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
-      yield value;
+      if (done) break;  // Stream is complete
+      yield value;      // Emit this chunk to the caller
     }
   } catch (error: any) {
     console.error('Failed to analyze text:', error);
@@ -408,12 +572,31 @@ async *analyzeText(prompt: string): AsyncGenerator<string> {
 ### 4.6 Implement Cleanup
 
 ```typescript path=null start=null
+/**
+ * Destroys the current AI session and frees up resources.
+ * 
+ * Call this when:
+ * - The session has used too many tokens (approaching limit)
+ * - You want to change the system prompt (requires new session)
+ * - The app is being closed/unmounted
+ * - You want to free up memory
+ * 
+ * After calling this, the next AI operation will create a new session.
+ */
 destroySession(): void {
+  // Step 1: Get the current session
   const currentSession = this.session();
+  
+  // Step 2: If session exists, clean it up
   if (currentSession) {
+    // Call the destroy method to free resources
+    // This is important for memory management
     currentSession.destroy();
+    
+    // Set our signal to null to indicate no active session
     this.session.set(null);
   }
+  // If no session exists, do nothing (already clean)
 }
 ```
 
