@@ -1,0 +1,92 @@
+<div class="app-container">
+  <header class="header">
+    <h1>📝 AI-Powered OCR</h1>
+    <p>Extract text from any image instantly using Chrome's on-device AI</p>
+    <div class="features">
+      <div class="feature">
+        <span class="feature-icon">⚡</span>
+        <span>Lightning Fast</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🔒</span>
+        <span>100% Private</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🌐</span>
+        <span>Works Offline</span>
+      </div>
+    </div>
+  </header>
+
+  @if (!isAiAvailable()) {
+    <div class="warning">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <div>
+        <h3>Chrome AI Not Available</h3>
+        <p>This app requires Chrome with the Prompt API enabled. Make sure you're using Chrome Canary/Dev with the appropriate flags enabled.</p>
+        <a href="https://developer.chrome.com/docs/ai/prompt-api" target="_blank" rel="noopener">Learn more →</a>
+      </div>
+    </div>
+  } @else {
+    @if (isDownloading()) {
+      <div class="download-progress">
+        <div class="progress-header">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <div>
+            <h3>Downloading Gemini Nano Model</h3>
+            <p>{{ downloadProgress().toFixed(0) }}% complete • This happens once (~1.5GB)</p>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="downloadProgress()"></div>
+        </div>
+      </div>
+    } @else if (availability() === 'downloadable' || availability() === 'downloading') {
+      <div class="download-required">
+        <div class="download-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </div>
+        <h2>Download Required</h2>
+        <p>The Gemini Nano model (~1.5GB) needs to be downloaded before you can analyze screenshots.</p>
+        <p class="download-note">This is a one-time download that happens on your device.</p>
+        <button class="download-btn" (click)="downloadModel()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download Model
+        </button>
+      </div>
+    }
+
+    @if (availability() === 'readily' || availability() === 'after-download' || availability() === 'available') {
+      <main class="main-content">
+        <app-screenshot-upload (imageSelected)="onImageSelected($event)" />
+        
+        <app-analysis-display 
+          [result]="analysisResult()"
+          [isAnalyzing]="isAnalyzing()"
+          [error]="error()" />
+      </main>
+    }
+  }
+
+  <footer class="footer">
+    <p>Built with Angular • Powered by Chrome On-Device AI</p>
+  </footer>
+</div>
+
+<router-outlet />

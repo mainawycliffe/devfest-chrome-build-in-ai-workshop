@@ -1,0 +1,271 @@
+<div class="text-improver-container">
+  <header class="header">
+    <div class="logo-container">
+      <h1 class="title">👑 TextTzar</h1>
+      <div class="sparkles">✨✨✨</div>
+    </div>
+    <p class="subtitle">Your AI-powered writing companion for perfect social media posts</p>
+    
+    <!-- Platform Selection -->
+    <div class="platform-selector">
+      <label class="platform-label">Platform:</label>
+      <div class="platform-buttons">
+        @for (platform of platforms | keyvalue; track platform.key) {
+          <button 
+            class="platform-btn"
+            [class.active]="selectedPlatform() === platform.key"
+            (click)="selectPlatformFromKey(platform.key)"
+          >
+            <span class="platform-icon">{{ platform.value.icon }}</span>
+            <span class="platform-name">{{ platform.value.name }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- Browser Not Supported Warning -->
+  @if (!isChrome()) {
+    <div class="browser-warning">
+      <div class="warning-icon">🌐</div>
+      <div class="warning-content">
+        <h3>Chrome Browser Required</h3>
+        <p>PostCraft AI requires Google Chrome to function. Please open this app in Chrome to continue.</p>
+        <div class="download-links">
+          <a href="https://www.google.com/chrome/" target="_blank" rel="noopener" class="download-link">
+            Download Chrome
+          </a>
+        </div>
+      </div>
+    </div>
+  } @else if (!isAiAvailable() && availability() === 'no') {
+    <!-- Chrome AI Not Available -->
+    <div class="setup-warning">
+      <div class="warning-icon">⚙️</div>
+      <div class="warning-content">
+        <h3>Chrome AI Setup Required</h3>
+        <p>PostCraft AI uses Chrome's built-in AI (Gemini Nano). Please enable the required flags:</p>
+        <div class="flags-list">
+          <div class="flag-item">
+            <strong>Step 1:</strong> Enable Prompt API
+            <a href="chrome://flags/#prompt-api-for-gemini-nano" class="flag-link" target="_blank">
+              chrome://flags/#prompt-api-for-gemini-nano
+            </a>
+          </div>
+          <div class="flag-item">
+            <strong>Step 2:</strong> Enable On-Device Model
+            <a href="chrome://flags/#optimization-guide-on-device-model" class="flag-link" target="_blank">
+              chrome://flags/#optimization-guide-on-device-model
+            </a>
+          </div>
+          <div class="flag-item">
+            <strong>Step 3:</strong> Restart Chrome after enabling both flags
+          </div>
+        </div>
+        <div class="help-note">
+          <strong>Note:</strong> You need Chrome Canary or Chrome Dev version 128 or higher.
+          <a href="https://www.google.com/chrome/canary/" target="_blank" rel="noopener">Download Chrome Canary</a>
+        </div>
+      </div>
+    </div>
+  } @else if (isDownloading()) {
+    <!-- Model Download Progress -->
+    <div class="download-progress">
+      <div class="progress-header">
+        <div class="progress-icon">📥</div>
+        <div>
+          <h3>Downloading AI Model</h3>
+          <p>{{ downloadProgress().toFixed(0) }}% complete • One-time download (~1.5GB)</p>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="downloadProgress()"></div>
+      </div>
+    </div>
+  } @else if (availability() === 'downloadable' || availability() === 'downloading') {
+    <!-- Model Download Required -->
+    <div class="download-required">
+      <div class="download-icon">📦</div>
+      <h3>AI Model Download Required</h3>
+      <p>To use PostCraft AI, you need to download the Gemini Nano model (~1.5GB).</p>
+      <p class="download-note">This is a one-time download that happens on your device.</p>
+      <button class="download-btn" (click)="downloadModel()">
+        📥 Download AI Model
+      </button>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-banner">
+      <span class="error-icon">⚠️</span>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (isChrome() && (availability() === 'readily' || availability() === 'after-download' || availability() === 'available')) {
+  <div class="main-content">
+    <!-- Text Input Section -->
+    <div class="editor-section">
+      <div class="editor-header">
+        <label for="text-input" class="editor-label">Your Text</label>
+        <div class="stats">
+          <span class="stat">{{ wordCount() }} words</span>
+          <span class="stat-separator">•</span>
+          <span class="stat" [class.over-limit]="isOverLimit()">
+            {{ characterCount() }} / {{ characterLimit() }} chars
+          </span>
+          @if (remainingChars() < 50 && remainingChars() >= 0) {
+            <span class="warning-badge">⚠️ {{ remainingChars() }} left</span>
+          }
+          @if (isOverLimit()) {
+            <span class="error-badge">❌ {{ Math.abs(remainingChars()) }} over</span>
+          }
+        </div>
+      </div>
+
+      <textarea
+        id="text-input"
+        class="text-area"
+        [(ngModel)]="originalText"
+        (ngModelChange)="onTextChange()"
+        placeholder="Start typing your social media post here..."
+        [disabled]="isProcessing()"
+        rows="8"
+      ></textarea>
+
+      @if (originalText()) {
+        <button 
+          class="clear-btn"
+          (click)="clearAll()"
+          [disabled]="isProcessing()"
+        >
+          Clear
+        </button>
+      }
+    </div>
+
+    <!-- Enhancement Options -->
+    @if (originalText()) {
+      <div class="enhancement-section">
+        <h2 class="section-title">Enhance Your Text</h2>
+        
+        <div class="enhancement-grid">
+          @for (option of enhancementOptions; track option.type) {
+            <button
+              class="enhancement-btn"
+              [class.active]="currentOperation() === option.type"
+              [disabled]="isProcessing()"
+              (click)="applyImprovement(option.type)"
+            >
+              <span class="icon">{{ option.icon }}</span>
+              <div class="btn-content">
+                <span class="btn-label">{{ option.label }}</span>
+                <span class="btn-description">{{ option.description }}</span>
+              </div>
+              @if (currentOperation() === option.type) {
+                <span class="spinner"></span>
+              }
+            </button>
+          }
+        </div>
+
+        <!-- Hashtag Generator -->
+        <div class="hashtag-section">
+          <button
+            class="hashtag-btn"
+            [class.active]="currentOperation() === 'hashtags'"
+            [disabled]="isProcessing()"
+            (click)="generateHashtags()"
+          >
+            <span class="icon">#</span>
+            <div class="btn-content">
+              <span class="btn-label">Generate Hashtags</span>
+              <span class="btn-description">Get relevant hashtags for your post</span>
+            </div>
+            @if (currentOperation() === 'hashtags') {
+              <span class="spinner"></span>
+            }
+          </button>
+
+          @if (hashtags().length > 0) {
+            <div class="hashtag-results">
+              <div class="hashtag-list">
+                @for (tag of hashtags(); track tag) {
+                  <span class="hashtag-chip">{{ tag }}</span>
+                }
+              </div>
+              <div class="hashtag-actions">
+                <button class="hashtag-action-btn primary" (click)="appendHashtags()">
+                  ➕ Append to Text
+                </button>
+                <button class="hashtag-action-btn" (click)="copyHashtags()">
+                  📋 Copy All
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Suggestions Display -->
+    @if (showSuggestions() && suggestions().length > 0) {
+      <div class="suggestions-section">
+        <div class="suggestions-header">
+          <h2 class="section-title">💡 Choose Your Favorite</h2>
+          <div class="result-actions">
+            <button class="action-btn secondary" (click)="discardSuggestions()">
+              Discard
+            </button>
+            <button class="action-btn" (click)="copySelectedSuggestion()">
+              📋 Copy
+            </button>
+            <button class="action-btn primary" (click)="useSelectedSuggestion()">
+              Use This
+            </button>
+          </div>
+        </div>
+
+        <div class="suggestions-list">
+          @for (suggestion of suggestions(); track suggestion.id; let i = $index) {
+            <div 
+              class="suggestion-card" 
+              [class.selected]="suggestion.selected"
+              (click)="selectSuggestion(suggestion.id)"
+            >
+              <div class="suggestion-header-row">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    [checked]="suggestion.selected"
+                    (change)="selectSuggestion(suggestion.id)"
+                    [name]="'suggestion-radio'"
+                    class="suggestion-radio"
+                  >
+                  <span class="option-label">Option {{ i + 1 }}</span>
+                </label>
+                <button 
+                  class="copy-suggestion-btn" 
+                  (click)="copyToClipboard(suggestion.text); $event.stopPropagation()"
+                  title="Copy this suggestion"
+                >
+                  📋
+                </button>
+              </div>
+              <div class="suggestion-text" [innerHTML]="renderMarkdown(suggestion.text)"></div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (!originalText()) {
+    <div class="empty-state">
+      <div class="empty-icon">👑</div>
+      <h3>Rule Your Content Like a Tzar</h3>
+      <p>Start typing or paste your content to command AI-powered perfection</p>
+    </div>
+  }
+  }
+</div>
