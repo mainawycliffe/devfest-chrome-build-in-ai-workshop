@@ -66,7 +66,7 @@ By the end of this codelab, you'll have created a fully functional Chrome AI ser
 
 2. **Open in Firebase Studio**:
 
-   - Go to: https://firebase.google.com/products/hosting/studio
+   - Go to: https://studio.firebase.google.com/
    - Click "Connect repository"
    - Select your forked repository
    - Choose the `starter` branch
