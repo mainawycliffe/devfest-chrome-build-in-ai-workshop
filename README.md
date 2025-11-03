@@ -50,7 +50,7 @@ By the end of this codelab, you'll have created a fully functional Chrome AI ser
 3. **Verify Setup**:
    - Open DevTools Console (F12)
    - Type: `typeof LanguageModel`
-   - Should return: `"object"` (not `"undefined"`)
+   - Should return: `"function"` (not `"undefined"`)
 
 ---
 
